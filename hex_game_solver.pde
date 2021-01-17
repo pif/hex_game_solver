@@ -28,6 +28,8 @@ final color[] FIGS = new color[]{C_3LI, C_3OR, C_4RO, C_4YL, C_4BL, C_4GR, C_4WW
 // UI CONTROLS START 
 void setup() {
   size(640, 360);
+  
+  textAlign(CENTER);
 
   // setup map
   map = new Cell[Q][R];
@@ -145,13 +147,13 @@ int putR(String d, int f) {
   if (checkIsSolution(map)) {
     solutions++;
     //println("SOLUTION! " + solutions);
-    //println(charMap());
+    //println(charMap()); //<>//
     return 0;
-  } //<>//
+  }
   
-  for (int q = 0; q < Q; q++) {
+  for (int q = 0; q < Q; q++) { //<>//
     for (int r = 0; r < R; r++) {
-      if (map[q][r].edge || !map[q][r].available) { //<>//
+      if (map[q][r].edge || !map[q][r].available) {
         continue;
       }
       
@@ -348,9 +350,9 @@ int elemToInt(color elem) {
 
 ////////////////////
 // HEX MATH START
-
+ //<>//
 // There's a mixture of hex-math and game-related
-// things in here. Ideally it should be split. //<>//
+// things in here. Ideally it should be split.
 
 // From hex article:
 // I've chosen q for "column" = x and r as "row" = z.
@@ -398,12 +400,15 @@ class Cell {
   }
   
   void draw() {
-    fill(c);
-      
     pushMatrix();
     translate(getPixelX(), getPixelY());
     rotate(TWO_PI / 4);
+    fill(c);
     polygon(0, 0, size, 6);
+    
+    rotate(- TWO_PI / 4);
+    fill(0);
+    text(q + "," + r, 0, 0);
     popMatrix();
   }
   
