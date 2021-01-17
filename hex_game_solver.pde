@@ -1,4 +1,5 @@
-// Solver for this game https://www.smartgames.eu/uk/one-player-games/iq-stars //<>// //<>// //<>//
+import java.util.*; //<>// //<>// //<>//
+// Solver for this game https://www.smartgames.eu/uk/one-player-games/iq-stars
 // Guide to hexagonal maps: https://www.redblobgames.com/grids/hexagons/
 
 Cell[][] map;
@@ -72,9 +73,13 @@ void keyPressed() {
     startRecursion();
     long f = System.currentTimeMillis();
     println("Found solutions: " + solutions);
+    println("Found solutions, list: " + allSols.size());
+    HashSet<String> allSolsSet = new HashSet<String>(allSols);
+    println("Found unique solutions: " + allSolsSet.size());
     println("Time, ms: " + (f - s));
-    // Time, ms: 59370
-    // Time, ms: 8252 – with precomputed map
+    // v0.1 Time, ms: 59370
+    // v0.2 Time, ms: 8252 – added precomputed figures map
+    // v0.3 Time, ms: 2706 - dead ends elimination, 381 unique solutions
   } else if (key == 'd') {
     if (isLoop)
       noLoop();
@@ -104,20 +109,20 @@ void drawMap() {
 }
 
 String charMap() {
-  String charMap = "";
+  StringBuilder sb = new StringBuilder();
   for (int r = 0; r < R; r++) {
     for (int i =0; i < r; i++) {
-      charMap = charMap + " ";
+      sb.append(" ");
     }
     
     for (int q = 0; q < Q; q++) {
       Cell c = map[q][r];
-      charMap = charMap + elemToStr(c.c) + " ";
+      sb.append(elemToStr(c.c)).append(" ");
     }
-    charMap = charMap + "\n";
+    sb.append("\n");
   }  
   
-  return charMap;
+  return sb.toString();
 }
 
 // UI CONTROLS END
@@ -126,32 +131,37 @@ String charMap() {
 ////////////////////
 // SOLVER START
 int solutions = 0;
+ArrayList<String> allSols = new ArrayList<String>();
 
 void startRecursion() {
-  println(System.currentTimeMillis());
+  //println(System.currentTimeMillis());
   generateMap();
-  println(System.currentTimeMillis());
+  //println(System.currentTimeMillis());
   putR("S: ", 0);
-  println(System.currentTimeMillis());
+  //println(System.currentTimeMillis());
 }
 
 int putR(String d, int f) {
-  //println(d + " --- " + f);
   String newD = d + " --> " + f + '-';
-  //println(charMap());
   if (f < FIGS.length) {
     newD = newD + elemToStr(FIGS[f]);
-    //println(newD);
   }  
+  //println(newD);
+  //println(charMap());
   
-  if (checkIsSolution(map)) {
+  int sol = checkIsSolution(map); //<>//
+  if (sol == 1) {
     solutions++;
+    allSols.add(charMap());
     //println("SOLUTION! " + solutions);
-    //println(charMap()); //<>//
+    //println(charMap());
+    // save solution for visualization?
+    return 0;
+  } else if (sol == -1) {
     return 0;
   }
   
-  for (int q = 0; q < Q; q++) { //<>//
+  for (int q = 0; q < Q; q++) {
     for (int r = 0; r < R; r++) {
       if (map[q][r].edge || !map[q][r].available) {
         continue;
@@ -183,13 +193,7 @@ int putElement(Cell[][] m, color elem, int offset_q, int offset_r, int angle) {
   for(int i = 0; i < fig.length; i++) {
     int pq = fig[i].q;
     int pr = fig[i].r;
-    if (pq < 0 || pr < 0 || pq >= Q || pr >= R) {
-      // got outside of the board
-      return -1;
-    }
-    
-    if (!(!m[pq][pr].edge && m[pq][pr].available)) {
-      // intersect with something
+    if (!cellAvailable(m, pq, pr)) {
       return -1;
     }
   }
@@ -214,15 +218,39 @@ void clearElement(Cell[][] m, color elem) {
   }
 }
 
-boolean checkIsSolution(Cell[][] m) {
-  for (int q = 0; q < Q; q++) {
-    for (int r = 0; r < R; r++) {
+/**
+ *  1 - found solution
+ *  0 - not solution
+ * -1 - there's a dead end map position, need to backtrack
+ */
+int checkIsSolution(Cell[][] m) {
+  boolean hasAvailable = false;
+  for (int r = 0; r < R; r++) {
+    for (int q = 0; q < Q; q++) {
       if (m[q][r].edge) {
         continue;
       } else if (m[q][r].available) {
-        return false;
+        hasAvailable = true;
+        // check have no neighbours. if there's at least 1 neighbour it means there can be an exit.
+        if (!(cellAvailable(m, q + 1, r    ) || cellAvailable(m, q - 1, r    ) || 
+              cellAvailable(m, q    , r + 1) || cellAvailable(m, q    , r - 1) || 
+              cellAvailable(m, q - 1, r + 1) || cellAvailable(m, q + 1, r - 1))) {
+          return -1;
+        } 
       }
     }
+  }
+  
+  return hasAvailable ? 0 : 1;
+}
+
+boolean cellAvailable(Cell[][] m, int pq, int pr) {
+  if (pq < 0 || pr < 0 || pq >= Q || pr >= R) {
+    // got outside of the board
+    return false;
+  } else if (m[pq][pr].edge || !m[pq][pr].available) {
+    // intersect with something
+    return false;
   }
   
   return true;
@@ -350,7 +378,7 @@ int elemToInt(color elem) {
 
 ////////////////////
 // HEX MATH START
- //<>//
+
 // There's a mixture of hex-math and game-related
 // things in here. Ideally it should be split.
 
