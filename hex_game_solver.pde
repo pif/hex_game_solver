@@ -78,8 +78,9 @@ void keyPressed() {
     println("Found unique solutions: " + allSolsSet.size());
     println("Time, ms: " + (f - s));
     // v0.1 Time, ms: 59370
-    // v0.2 Time, ms: 8252 – added precomputed figures map
-    // v0.3 Time, ms: 2706 - dead ends elimination, 381 unique solutions
+    // v0.2 Time, ms: 8252 – added precomputed figures map, 1524 solutions
+    // v0.3 Time, ms: 2706 - dead ends elimination, 381 unique solutions (duplicates due to symmetric fig rotation)
+    // v0.4 Time, ms: 2206 - 1/2 cell dead ends elimination
   } else if (key == 'd') {
     if (isLoop)
       noLoop();
@@ -231,17 +232,34 @@ int checkIsSolution(Cell[][] m) {
         continue;
       } else if (m[q][r].available) {
         hasAvailable = true;
-        // check have no neighbours. if there's at least 1 neighbour it means there can be an exit.
-        if (!(cellAvailable(m, q + 1, r    ) || cellAvailable(m, q - 1, r    ) || 
-              cellAvailable(m, q    , r + 1) || cellAvailable(m, q    , r - 1) || 
-              cellAvailable(m, q - 1, r + 1) || cellAvailable(m, q + 1, r - 1))) {
+        List<Cell> neighbours = cellAvailableNeighbours(m, q, r);
+        if (neighbours.size() == 0) {
+          // eliminate 1 lonely cells //<>//
           return -1;
-        } 
+        } else if (neighbours.size() == 1) {
+          // eliminate 2 lonely cells
+          List<Cell> nNs = cellAvailableNeighbours(m, neighbours.get(0).q, neighbours.get(0).r);
+          if (nNs.size() == 1) { //<>//
+            return -1;
+          }
+        }
       }
     }
   }
   
   return hasAvailable ? 0 : 1;
+}
+
+ArrayList<Cell> _can = new ArrayList<Cell>();
+List<Cell> cellAvailableNeighbours(Cell[][] m, int q, int r) {
+  _can.clear();
+  if (cellAvailable(m, q + 1, r    )) _can.add(m[q + 1][r    ]);
+  if (cellAvailable(m, q - 1, r    )) _can.add(m[q - 1][r    ]);
+  if (cellAvailable(m, q    , r + 1)) _can.add(m[q    ][r + 1]);
+  if (cellAvailable(m, q    , r - 1)) _can.add(m[q    ][r - 1]);
+  if (cellAvailable(m, q - 1, r + 1)) _can.add(m[q - 1][r + 1]);
+  if (cellAvailable(m, q + 1, r - 1)) _can.add(m[q + 1][r - 1]);
+  return _can;
 }
 
 boolean cellAvailable(Cell[][] m, int pq, int pr) {
