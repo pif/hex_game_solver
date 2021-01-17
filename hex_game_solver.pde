@@ -2,12 +2,12 @@ import java.util.*; //<>// //<>// //<>//
 // Solver for this game https://www.smartgames.eu/uk/one-player-games/iq-stars
 // Guide to hexagonal maps: https://www.redblobgames.com/grids/hexagons/
 
-Cell[][] map;
+Map map;
 
+final int HEX_SIZE = 38;
 final int Q = 8;
 final int R = 4;
-final int SIZE = 38;
-
+  
 // 3 violet in row
 // 3 orange
 // 4 red romb
@@ -25,6 +25,138 @@ final color C_4WW = #F470A9;
 
 final color[] FIGS = new color[]{C_3LI, C_3OR, C_4RO, C_4YL, C_4BL, C_4GR, C_4WW};
 
+
+////////////////////
+// MAP START
+
+class Map {
+  
+  Cell[][] map;
+  
+  public Map() {
+    map = new Cell[Q][R];
+    for (int q = 0; q < Q; q++) {
+      for (int r = 0; r < R; r++) {
+        map[q][r] = new Cell(q, r);
+      }
+    }
+    // disable all non-board cells
+    map[0][0].setEdge();
+    map[0][1].setEdge();
+    map[7][1].setEdge();
+    map[7][2].setEdge();
+    map[6][3].setEdge();
+    map[7][3].setEdge();    
+  }
+  
+  public Map(String m) {
+    map = new Cell[Q][R];
+    for (int r = 0; r < R; r++) {
+      for (int q = 0; q < Q; q++) {
+        map[q][r] = new Cell(q, r);
+      }
+    }
+    
+    int curr = 0;
+    for (int r = 0; r < R; r++) {
+      for (int i =0; i < r; i++) {
+        curr++;
+      }
+      
+      for (int q = 0; q < Q; q++) {
+        Cell cell = map[q][r];
+        char c = m.charAt(curr);
+        cell.c = strToElem(c);
+        
+        curr += 2;
+      }
+      curr++;
+    }  
+    
+    // disable all non-board cells
+    map[0][0].setEdge();
+    map[0][1].setEdge();
+    map[7][1].setEdge();
+    map[7][2].setEdge();
+    map[6][3].setEdge();
+    map[7][3].setEdge();    
+  }
+
+  void draw() {
+    background(0);
+    
+    translate(HEX_SIZE, 2 * HEX_SIZE);
+  
+    for (int q = 0; q < Q; q++) {
+      for (int r = 0; r < R; r++) {
+        Cell c = map[q][r];
+        c.draw();
+      }
+    }    
+  }
+  
+  String toString() {
+    StringBuilder sb = new StringBuilder();
+    for (int r = 0; r < R; r++) {
+      for (int i =0; i < r; i++) {
+        sb.append(" ");
+      }
+      
+      for (int q = 0; q < Q; q++) {
+        Cell c = map[q][r];
+        sb.append(elemToStr(c.c)).append(" ");
+      }
+      sb.append("\n");
+    }  
+    
+    return sb.toString();
+  }
+}
+
+char elemToStr(color elem) {
+  switch (elem) {
+    case C_3LI: return 'I';
+    case C_3OR: return 'C';
+    case C_4RO: return 'R';
+    case C_4YL: return 'Y';
+    case C_4BL: return 'K';
+    case C_4GR: return 'L';
+    case C_4WW: return 'W';
+    case #ffffff: return '_';
+    default: return ' ';
+  }
+}
+
+color strToElem(char c) {
+  switch (c) {
+    case 'I': return C_3LI;
+    case 'C': return C_3OR;
+    case 'R': return C_4RO;
+    case 'Y': return C_4YL;
+    case 'K': return C_4BL;
+    case 'L': return C_4GR;
+    case 'W': return C_4WW;
+    case '_': return #ffffff;
+  }
+  return -1;
+}
+
+int elemToInt(color elem) {
+  switch (elem) {
+    case C_3LI: return 0;
+    case C_3OR: return 1;
+    case C_4RO: return 2;
+    case C_4YL: return 3;
+    case C_4BL: return 4;
+    case C_4GR: return 5;
+    case C_4WW: return 6;
+    default: return -1;
+  }
+}
+
+// MAP END
+////////////////////
+
 ////////////////////
 // UI CONTROLS START 
 void setup() {
@@ -32,31 +164,19 @@ void setup() {
   
   textAlign(CENTER);
 
-  // setup map
-  map = new Cell[Q][R];
-  for (int q = 0; q < Q; q++) {
-    for (int r = 0; r < R; r++) {
-      map[q][r] = new Cell(q, r);
-    }
-  }
-  // disable all non-board cells
-  map[0][0].setEdge();
-  map[0][1].setEdge();
-  map[7][1].setEdge();
-  map[7][2].setEdge();
-  map[6][3].setEdge();
-  map[7][3].setEdge();
+  map = new Map();
   
   noLoop();
 }
 
 void draw() {
-  drawMap();//startRecursion();
+  map.draw();
 }
 
 boolean isLoop = false;
 int ang = 0;
 int vf = 0, vq = 0, vr = 0;
+int vs = 0;
 void keyPressed() {
   if (key == 'a') {
     ang = (ang + 60) % 360;
@@ -75,18 +195,30 @@ void keyPressed() {
     println("Found solutions: " + solutions);
     println("Found solutions, list: " + allSols.size());
     HashSet<String> allSolsSet = new HashSet<String>(allSols);
-    println("Found unique solutions: " + allSolsSet.size());
+    allSolsSetList = new ArrayList<String>(allSolsSet);
+    println("Found unique solutions: " + allSolsSetList.size());
     println("Time, ms: " + (f - s));
     // v0.1 Time, ms: 59370
     // v0.2 Time, ms: 8252 – added precomputed figures map, 1524 solutions
     // v0.3 Time, ms: 2706 - dead ends elimination, 381 unique solutions (duplicates due to symmetric fig rotation)
     // v0.4 Time, ms: 2206 - 1/2 cell dead ends elimination
+  } else if (key == ']') {
+    vs++;
+    println("Solution: " + vs);
+    String selSol = allSolsSetList.get(vs);
+    println(selSol);
+    map = new Map(selSol);
+  } else if (key == '[') {
+    vs--;
+    println("Solution: " + vs);
+    String selSol = allSolsSetList.get(vs);
+    println(selSol);
+    map = new Map(selSol);
   } else if (key == 'd') {
     if (isLoop)
       noLoop();
     else 
       loop();
-    drawMap();
   } 
   
   println("Controls: figure " + vf + " at (q,r)=(" + vq + "," + vr + ") at angle " + ang);
@@ -96,64 +228,35 @@ void mouseClicked() {
   clearElement(map, FIGS[vf]);
 }
 
-void drawMap() {
-  background(0);
-  
-  translate(SIZE, 2 * SIZE);
-
-  for (int q = 0; q < Q; q++) {
-    for (int r = 0; r < R; r++) {
-      Cell c = map[q][r];
-      c.draw();
-    }
-  }  
-}
-
-String charMap() {
-  StringBuilder sb = new StringBuilder();
-  for (int r = 0; r < R; r++) {
-    for (int i =0; i < r; i++) {
-      sb.append(" ");
-    }
-    
-    for (int q = 0; q < Q; q++) {
-      Cell c = map[q][r];
-      sb.append(elemToStr(c.c)).append(" ");
-    }
-    sb.append("\n");
-  }  
-  
-  return sb.toString();
-}
-
 // UI CONTROLS END
 ////////////////////
 
 ////////////////////
 // SOLVER START
 int solutions = 0;
-ArrayList<String> allSols = new ArrayList<String>();
+ArrayList<String> allSols = new ArrayList<String>(); //<>//
+ArrayList<String> allSolsSetList;
 
 void startRecursion() {
   //println(System.currentTimeMillis());
-  generateMap();
+  generateMap(); //<>//
   //println(System.currentTimeMillis());
-  putR("S: ", 0);
+  putR(0);
   //println(System.currentTimeMillis());
 }
 
-int putR(String d, int f) {
-  String newD = d + " --> " + f + '-';
-  if (f < FIGS.length) {
-    newD = newD + elemToStr(FIGS[f]);
-  }  
+int putR(int f) {
+  //String newD = d + " --> " + f + '-';
+  //if (f < FIGS.length) {
+  //  newD = newD + elemToStr(FIGS[f]);
+  //}  
   //println(newD);
   //println(charMap());
   
   int sol = checkIsSolution(map); //<>//
   if (sol == 1) {
     solutions++;
-    allSols.add(charMap());
+    allSols.add(map.toString());
     //println("SOLUTION! " + solutions);
     //println(charMap());
     // save solution for visualization?
@@ -164,13 +267,13 @@ int putR(String d, int f) {
   
   for (int q = 0; q < Q; q++) {
     for (int r = 0; r < R; r++) {
-      if (map[q][r].edge || !map[q][r].available) {
+      if (map.map[q][r].edge || !map.map[q][r].available) {
         continue;
       }
       
       for (int a = 0; a < 360; a = a + 60) {
         if (putElement(map, FIGS[f], q, r, a) == 0) {
-          putR(newD, f + 1);
+          putR(f + 1);
           clearElement(map, FIGS[f]);
         }
       }
@@ -184,7 +287,7 @@ int putR(String d, int f) {
  * -1 – ended in edge, need to backtrack
  *  0 – all good
  */
-int putElement(Cell[][] m, color elem, int offset_q, int offset_r, int angle) {
+int putElement(Map m, color elem, int offset_q, int offset_r, int angle) {
   //println("Placing "+elemToStr(elem)+" at offset q,r="+offset_q+","+offset_r+" at angle "+angle);
   //println(charMap());
   
@@ -203,17 +306,17 @@ int putElement(Cell[][] m, color elem, int offset_q, int offset_r, int angle) {
   for(int i = 0; i < fig.length; i++) {
     int pq = fig[i].q;
     int pr = fig[i].r;
-    m[pq][pr].set(elem);
+    m.map[pq][pr].set(elem);
   }
   
   return 0;
 }
 
-void clearElement(Cell[][] m, color elem) {
+void clearElement(Map m, color elem) {
   for (int q = 0; q < Q; q++) {
     for (int r = 0; r < R; r++) {
-      if (m[q][r].c == elem) {
-        m[q][r].clear();
+      if (m.map[q][r].c == elem) {
+        m.map[q][r].clear();
       }
     }
   }
@@ -224,22 +327,22 @@ void clearElement(Cell[][] m, color elem) {
  *  0 - not solution
  * -1 - there's a dead end map position, need to backtrack
  */
-int checkIsSolution(Cell[][] m) {
+int checkIsSolution(Map m) {
   boolean hasAvailable = false;
   for (int r = 0; r < R; r++) {
     for (int q = 0; q < Q; q++) {
-      if (m[q][r].edge) {
+      if (m.map[q][r].edge) {
         continue;
-      } else if (m[q][r].available) {
+      } else if (m.map[q][r].available) {
         hasAvailable = true;
         List<Cell> neighbours = cellAvailableNeighbours(m, q, r);
         if (neighbours.size() == 0) {
-          // eliminate 1 lonely cells //<>//
+          // eliminate 1 lonely cells
           return -1;
         } else if (neighbours.size() == 1) {
           // eliminate 2 lonely cells
           List<Cell> nNs = cellAvailableNeighbours(m, neighbours.get(0).q, neighbours.get(0).r);
-          if (nNs.size() == 1) { //<>//
+          if (nNs.size() == 1) {
             return -1;
           }
         }
@@ -251,22 +354,22 @@ int checkIsSolution(Cell[][] m) {
 }
 
 ArrayList<Cell> _can = new ArrayList<Cell>();
-List<Cell> cellAvailableNeighbours(Cell[][] m, int q, int r) {
+List<Cell> cellAvailableNeighbours(Map m, int q, int r) {
   _can.clear();
-  if (cellAvailable(m, q + 1, r    )) _can.add(m[q + 1][r    ]);
-  if (cellAvailable(m, q - 1, r    )) _can.add(m[q - 1][r    ]);
-  if (cellAvailable(m, q    , r + 1)) _can.add(m[q    ][r + 1]);
-  if (cellAvailable(m, q    , r - 1)) _can.add(m[q    ][r - 1]);
-  if (cellAvailable(m, q - 1, r + 1)) _can.add(m[q - 1][r + 1]);
-  if (cellAvailable(m, q + 1, r - 1)) _can.add(m[q + 1][r - 1]);
+  if (cellAvailable(m, q + 1, r    )) _can.add(m.map[q + 1][r    ]);
+  if (cellAvailable(m, q - 1, r    )) _can.add(m.map[q - 1][r    ]);
+  if (cellAvailable(m, q    , r + 1)) _can.add(m.map[q    ][r + 1]);
+  if (cellAvailable(m, q    , r - 1)) _can.add(m.map[q    ][r - 1]);
+  if (cellAvailable(m, q - 1, r + 1)) _can.add(m.map[q - 1][r + 1]);
+  if (cellAvailable(m, q + 1, r - 1)) _can.add(m.map[q + 1][r - 1]);
   return _can;
 }
 
-boolean cellAvailable(Cell[][] m, int pq, int pr) {
+boolean cellAvailable(Map m, int pq, int pr) {
   if (pq < 0 || pr < 0 || pq >= Q || pr >= R) {
     // got outside of the board
     return false;
-  } else if (m[pq][pr].edge || !m[pq][pr].available) {
+  } else if (m.map[pq][pr].edge || !m.map[pq][pr].available) {
     // intersect with something
     return false;
   }
@@ -364,33 +467,6 @@ Cell[] getFig(color elem, int offset_q, int offset_r, int angle) {
   return precomputed[elemToInt(elem)][offset_q][offset_r][angle/60];
 }
 
-char elemToStr(color elem) {
-  switch (elem) {
-    case C_3LI: return 'I';
-    case C_3OR: return 'C';
-    case C_4RO: return 'R';
-    case C_4YL: return 'Y';
-    case C_4BL: return 'K';
-    case C_4GR: return 'L';
-    case C_4WW: return 'W';
-    case #ffffff: return '_';
-    default: return ' ';
-  }
-}
-
-int elemToInt(color elem) {
-  switch (elem) {
-    case C_3LI: return 0;
-    case C_3OR: return 1;
-    case C_4RO: return 2;
-    case C_4YL: return 3;
-    case C_4BL: return 4;
-    case C_4GR: return 5;
-    case C_4WW: return 6;
-    default: return -1;
-  }
-}
-
 // FIGURES: PRECOMPUTE & UTILS END
 ////////////////////
 
@@ -414,7 +490,7 @@ class Cell {
   
   color c;
   
-  int size = SIZE;
+  int size = HEX_SIZE;
 
   Cell(int q, int r) {
     this.q = q;
