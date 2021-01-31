@@ -24,6 +24,7 @@ final color C_4GR = #C0CA3E;
 final color C_4WW = #F470A9;
 
 final color[] FIGS = new color[]{C_3LI, C_3OR, C_4RO, C_4YL, C_4BL, C_4GR, C_4WW};
+boolean[] FIGS_ON_MAP = new boolean[7];
 
 
 ////////////////////
@@ -160,24 +161,49 @@ int elemToInt(color elem) {
 ////////////////////
 // UI CONTROLS START 
 void setup() {
-  size(640, 360);
+  size(640, 400);
   
   textAlign(CENTER);
 
-  map = new Map();
-  generateMap();
-  
-  //noLoop();
+  resetState();
 }
 
 void draw() {
   map.draw();
+  
+  drawUI();
+}
+
+void resetState() {
+  map = new Map();
+  generateMap();
+  
+  isLoop = true;
+  ang = 0;
+  vf = 0;
+  vq = 0;
+  vr = 0;
+  vs = 0;
+  
+  FIGS_ON_MAP = new boolean[7];
+  
+  solutions = 0;
+  allSols = new ArrayList<String>();
+  allSolsSetList = null;
+}
+
+void setFullMap(Map m) {
+  map = m;
+  for (int i = 0; i < FIGS_ON_MAP.length; i++) {
+    FIGS_ON_MAP[i] = true;
+  }
 }
 
 boolean isLoop = true;//false;
 int ang = 0;
 int vf = 0, vq = 0, vr = 0;
 int vs = 0;
+
 void keyPressed() {
   if (key == 'a') {
     ang = (ang + 60) % 360;
@@ -203,18 +229,23 @@ void keyPressed() {
     // v0.2 Time, ms: 8252 – added precomputed figures map, 1524 solutions
     // v0.3 Time, ms: 2706 - dead ends elimination, 381 unique solutions (duplicates due to symmetric fig rotation)
     // v0.4 Time, ms: 2206 - 1/2 cell dead ends elimination
+  } else if (key == '`') {
+    // reset state
+    resetState();
   } else if (key == ']') {
     vs++;
+    vs = vs >= allSolsSetList.size() ? 0 : vs;
     println("Solution: " + vs);
     String selSol = allSolsSetList.get(vs);
     println(selSol);
-    map = new Map(selSol);
+    setFullMap(new Map(selSol));
   } else if (key == '[') {
     vs--;
+    vs = vs < 0 ? allSolsSetList.size() - 1 : vs;
     println("Solution: " + vs);
     String selSol = allSolsSetList.get(vs);
     println(selSol);
-    map = new Map(selSol);
+    setFullMap(new Map(selSol));
   } else if (key == 'd') {
     if (isLoop)
       noLoop();
@@ -226,6 +257,44 @@ void keyPressed() {
   } 
   
   println("Controls: figure " + vf + " at (q,r)=(" + vq + "," + vr + ") at angle " + ang);
+}
+
+void drawUI() {
+  pushMatrix();
+  translate(60, 260);
+  scale(0.25);
+  
+  for (int e = 0; e<FIGS_ON_MAP.length; e++) {
+    Cell[] fig = getFig(FIGS[e], 0, 0, 0);
+    pushMatrix();
+    pushStyle();
+    translate(e * 250, 0);
+    // highlight selected item
+    if (e == vf) {
+      strokeWeight(16);
+      stroke(#ffffff);
+    }
+    
+    for(int i = 0; i < fig.length; i++) {
+      Cell c = fig[i];
+      // colorize those who are on map
+      color tc = c.c;
+      if (FIGS_ON_MAP[e]) {
+        c.c = FIGS[e];
+      }
+      c.draw();
+      if (FIGS_ON_MAP[e]) {
+        c.c = tc;
+      }
+      
+    }
+    popStyle();
+    popMatrix();
+  }
+  
+  popMatrix();
+  
+  highlight();
 }
 
 Cell closestCell(int cX, int cY) {
@@ -267,10 +336,10 @@ void highlight() {
   ////println("Closest cell: " + min);
   //min.highlighted = true;
   
-  println(vf, FIGS[vf], min.q, min.r, ang);
+  //println(vf, FIGS[vf], min.q, min.r, ang);
   Cell[] fig = getFig(FIGS[vf], min.q, min.r, ang);
   
-  //// v1 - hide all figure if out of bounds of can't set
+  //// v1 - hide all figure if out of bounds or can't set
   //boolean canSet = true;
   //for(int i = 0; i < fig.length; i++) {
   //  int pq = fig[i].q;
@@ -324,7 +393,7 @@ void mouseClicked() {
 }
 
 void mouseMoved() {
-  highlight();
+  //highlight();
 }
 
 // UI CONTROLS END
@@ -338,7 +407,7 @@ ArrayList<String> allSolsSetList;
 
 void startRecursion() {
   //println(System.currentTimeMillis());
-  generateMap(); //<>//
+  generateMap();
   //println(System.currentTimeMillis());
   putR(0);
   //println(System.currentTimeMillis());
@@ -351,8 +420,7 @@ int putR(int f) {
   //}  
   //println(newD);
   //println(charMap());
-  
-  int sol = checkIsSolution(map); //<>//
+  int sol = checkIsSolution(map);
   if (sol == 1) {
     solutions++;
     allSols.add(map.toString());
@@ -361,7 +429,17 @@ int putR(int f) {
     // save solution for visualization?
     return 0;
   } else if (sol == -1) {
+    // dead end on map
     return 0;
+  }
+  
+  if (FIGS_ON_MAP[f] == true) { // preset element
+    for (int i = f+1; i < FIGS_ON_MAP.length; i++) {
+      f = i;
+      if (FIGS_ON_MAP[i] == false) {
+        break;
+      }
+    }
   }
   
   for (int q = 0; q < Q; q++) {
@@ -407,6 +485,8 @@ int putElement(Map m, color elem, int offset_q, int offset_r, int angle) {
     int pr = fig[i].r;
     m.map[pq][pr].set(elem);
   }
+  // todo: move everything related to FIGS_ON_MAP somewhere, this should know nothing about state
+  FIGS_ON_MAP[elemToInt(elem)] = true;
   
   return 0;
 }
@@ -419,6 +499,7 @@ void clearElement(Map m, color elem) {
       }
     }
   }
+  FIGS_ON_MAP[elemToInt(elem)] = false;
 }
 
 /**
@@ -562,7 +643,7 @@ Cell[] genFig(color elem, int offset_q, int offset_r, int angle) {
   return fig;
 }
 
-Cell[] getFig(color elem, int offset_q, int offset_r, int angle) {
+Cell[] getFig(color elem, int offset_q, int offset_r, int angle) { //<>//
   return precomputed[elemToInt(elem)][offset_q][offset_r][angle/60];
 }
 
