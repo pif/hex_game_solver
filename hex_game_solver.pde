@@ -165,15 +165,16 @@ void setup() {
   textAlign(CENTER);
 
   map = new Map();
+  generateMap();
   
-  noLoop();
+  //noLoop();
 }
 
 void draw() {
   map.draw();
 }
 
-boolean isLoop = false;
+boolean isLoop = true;//false;
 int ang = 0;
 int vf = 0, vq = 0, vr = 0;
 int vs = 0;
@@ -219,13 +220,111 @@ void keyPressed() {
       noLoop();
     else 
       loop();
+  } else if (key == 'g') {
+    // precompute
+    generateMap();    
   } 
   
   println("Controls: figure " + vf + " at (q,r)=(" + vq + "," + vr + ") at angle " + ang);
 }
 
+Cell closestCell(int cX, int cY) {
+  // can be improved via round_hex(pixel_to_hex(mouseClick.coordinates))
+  Cell min = null;
+  float min_dist = 1000000;
+  
+  for (int q = 0; q < Q; q++) {
+    for (int r = 0; r < R; r++) {
+      Cell c = map.map[q][r];
+      float d = dist(c.getPixelX(), c.getPixelY(), cX, cY);
+      if (d < min_dist) {
+        min_dist = d;
+        min = c;
+      }
+    }
+  }  
+  
+  return min;
+}
+
+void highlight() {
+  //println("Coordinates: ", mouseX, mouseY);
+  
+  int cX = mouseX - HEX_SIZE;
+  int cY = mouseY - 2 * HEX_SIZE;
+  
+  //println("C Coordinates: ", cX, cY);
+  
+  for (int q = 0; q < Q; q++) {
+    for (int r = 0; r < R; r++) {
+      Cell c = map.map[q][r];
+      c.highlighted = false;
+    }
+  }  
+  
+  Cell min = closestCell(cX, cY);
+  
+  ////println("Closest cell: " + min);
+  //min.highlighted = true;
+  
+  println(vf, FIGS[vf], min.q, min.r, ang);
+  Cell[] fig = getFig(FIGS[vf], min.q, min.r, ang);
+  
+  //// v1 - hide all figure if out of bounds of can't set
+  //boolean canSet = true;
+  //for(int i = 0; i < fig.length; i++) {
+  //  int pq = fig[i].q;
+  //  int pr = fig[i].r;
+  //  if (!cellAvailable(map, pq, pr)) {
+  //    canSet = false;
+  //    break;
+  //  }
+  //}
+  
+  //if (canSet) {
+  //  for(int i = 0; i < fig.length; i++) {
+  //    Cell c = fig[i];
+  //    map.map[c.q][c.r].highlighted = true;
+  //  }
+  //}
+  
+  // v2 - highlight everything on the deck
+  for(int i = 0; i < fig.length; i++) {
+    Cell c = fig[i];
+    int pq = fig[i].q;
+    int pr = fig[i].r;
+    if (!(pq < 0 || pr < 0 || pq >= Q || pr >= R)) {
+      map.map[c.q][c.r].highlighted = true;
+    }
+  }
+}
+
+int putHighlightOnMap() {
+//println("Coordinates: ", mouseX, mouseY);
+  
+  int cX = mouseX - HEX_SIZE;
+  int cY = mouseY - 2 * HEX_SIZE;
+  
+  Cell min = closestCell(cX, cY);
+  
+  return putElement(map, FIGS[vf], min.q, min.r, ang);
+}
+
 void mouseClicked() {
-  clearElement(map, FIGS[vf]);
+  if (mouseButton == LEFT) {
+    if (putHighlightOnMap() == 0) {
+      vf = (vf + 1) % FIGS.length;
+      if(checkIsSolution(map) == 1) {
+        println("Congrats!!! Solution!!!"); 
+      }
+    }
+  } else {
+    clearElement(map, FIGS[vf]);
+  }
+}
+
+void mouseMoved() {
+  highlight();
 }
 
 // UI CONTROLS END
@@ -234,7 +333,7 @@ void mouseClicked() {
 ////////////////////
 // SOLVER START
 int solutions = 0;
-ArrayList<String> allSols = new ArrayList<String>(); //<>//
+ArrayList<String> allSols = new ArrayList<String>();
 ArrayList<String> allSolsSetList;
 
 void startRecursion() {
@@ -491,6 +590,7 @@ class Cell {
   color c;
   
   int size = HEX_SIZE;
+  boolean highlighted = false;
 
   Cell(int q, int r) {
     this.q = q;
@@ -518,15 +618,24 @@ class Cell {
     return size * (sqrt(3) * q  +  sqrt(3)/2 * r);
   }
   float getPixelY() {
-    return size * (                         3./2 * r);
+    return size * (                     3./2 * r);
   }
   
   void draw() {
     pushMatrix();
     translate(getPixelX(), getPixelY());
     rotate(TWO_PI / 4);
-    fill(c);
+    
+    pushStyle();
+    if (highlighted) {
+      fill(FIGS[vf]);// debug color#660033);
+      stroke(#660033);
+      strokeWeight(4);
+    } else {
+      fill(c);
+    }
     polygon(0, 0, size, 6);
+    popStyle();
     
     rotate(- TWO_PI / 4);
     fill(0);
